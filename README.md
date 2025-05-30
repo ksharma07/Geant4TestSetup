@@ -1,0 +1,1 @@
+This Geant4 project simulates the Scintillator-SiPM tests with gamma source (Na22) with reference detectors BaF2 and CeBr3
