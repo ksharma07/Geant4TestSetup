@@ -13,30 +13,35 @@
 
 int main(int argc, char** argv)
 {
-    G4UIExecutive *ui = new G4UIExecutive(argc, argv);
-
-    G4RunManager *runManager = new G4RunManager();
-    
-    // Register the detector construction with the run manager
+    // Run Manager
+    auto* runManager = new G4RunManager();
     runManager->SetUserInitialization(new DetectorConstruction());
     runManager->SetUserInitialization(new PhysicsList());
     runManager->SetUserInitialization(new ActionInitialization());
-    
     runManager->Initialize();
 
-    G4VisManager *visManager = new G4VisExecutive();
+    // Visualization Manager
+    auto* visManager = new G4VisExecutive();
     visManager->Initialize();
 
+    // UI Manager
+    auto* UI = G4UImanager::GetUIpointer();
 
-    G4UImanager *UImanager = G4UImanager::GetUIpointer();
-    UImanager->ApplyCommand("/control/macroPath ..");
-    UImanager->ApplyCommand("/control/execute vis.mac");
-
-    ui->SessionStart();
+    // Check if batch mode or interactive
+    if (argc == 1) {
+        // Interactive
+        G4UIExecutive* session = new G4UIExecutive(argc, argv);
+        UI->ApplyCommand("/control/execute ../vis.mac");
+        session->SessionStart();
+        delete session;
+    } else {
+        // Batch mode
+        G4String macroFile = argv[1];
+        G4String command = "/control/execute " + macroFile;
+        UI->ApplyCommand(command);
+    }
 
     delete visManager;
     delete runManager;
-    delete ui;
-
     return 0;
 }
