@@ -2,10 +2,7 @@
 
 PhysicsList::PhysicsList()
 {
-    RegisterPhysics(new G4EmStandardPhysics());
-    RegisterPhysics(new G4DecayPhysics());       
-    RegisterPhysics(new G4OpticalPhysics());     
-    RegisterPhysics(new NeutronHPphysics());     
+    RegisterPhysics(new G4EmStandardPhysics_option3());     
 }
 
 PhysicsList::~PhysicsList()
@@ -13,4 +10,10 @@ PhysicsList::~PhysicsList()
 
 }
 
-
+void PhysicsList::SetCuts()
+{   //any secondaries with distance above 0mm is produced. so basically all. 
+    SetCutValue(0, "gamma");
+    SetCutValue(0, "e-");
+    SetCutValue(0, "e+");
+    SetCutValue(0, "proton");
+}

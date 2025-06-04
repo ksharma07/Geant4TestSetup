@@ -19,12 +19,9 @@ int main(int argc, char** argv)
     
     // Register the detector construction with the run manager
     runManager->SetUserInitialization(new DetectorConstruction());
-
     runManager->SetUserInitialization(new PhysicsList());
-
     runManager->SetUserInitialization(new ActionInitialization());
     
-    // Initialize the run manager (this calls Construct() internally)
     runManager->Initialize();
 
     G4VisManager *visManager = new G4VisExecutive();

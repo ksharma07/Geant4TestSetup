@@ -8,6 +8,7 @@ class ActionInitialization : public G4VUserActionInitialization
 public:
     ActionInitialization();
     virtual ~ActionInitialization();
+    
     virtual void Build() const override;
 };
 
