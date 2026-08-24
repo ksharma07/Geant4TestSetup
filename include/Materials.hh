@@ -2,6 +2,7 @@
 #define Materials_hh
 
 #include "G4Material.hh"
+#include "G4MaterialPropertiesTable.hh"
 
 class Materials
 {
@@ -61,12 +62,17 @@ private:
   G4Material *BaF2;
   G4Material *SiO2;
   G4Material *ABS_GF;
+  G4Material *opticalGrease;
 
   G4Material *eljen230;
   G4Material *eljen232q;
   G4Material *boricAcid;
 
   G4double temperature, pressure, density;
+
+  // this part does all optical/scintillation table setup in one place so Construct()
+  // can simply request materials by name and already have optical behavior attached.
+  void BuildOpticalProperties();
 };
 
 #endif

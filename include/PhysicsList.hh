@@ -5,6 +5,7 @@
 #include "G4ProcessManager.hh"
 #include "G4EmStandardPhysics.hh"
 #include "G4EmStandardPhysics_option3.hh"
+#include "G4OpticalPhysics.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4Gamma.hh"
 

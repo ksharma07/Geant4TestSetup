@@ -1,6 +1,12 @@
 # Open a visualization driver (TSG for terminal-based; use OGL for OpenGL window)
 /vis/open OGL 600x600-0+0
 
+/control/verbose 0
+/run/verbose 0
+/event/verbose 0
+/tracking/verbose 0
+/process/verbose 0
+
 # Turn off auto-refresh while setting up the scene
 /vis/viewer/set/autoRefresh false
 /vis/verbose errors
@@ -19,7 +25,6 @@
 
 # Show particle trajectories
 /vis/scene/add/trajectories
-/tracking/verbose 1
 /tracking/storeTrajectory 1
 /vis/scene/endOfEventAction accumulate
 

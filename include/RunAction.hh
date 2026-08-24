@@ -5,6 +5,7 @@
 #include "G4Run.hh"
 #include "G4AnalysisManager.hh"
 #include "globals.hh"
+#include <chrono>
 
 class G4Run;
 
@@ -15,6 +16,9 @@ public:
 
     virtual void BeginOfRunAction(const G4Run*);
     virtual void EndOfRunAction(const G4Run*);
+
+private:
+    std::chrono::steady_clock::time_point fRunStartTime;
 };
 
 #endif

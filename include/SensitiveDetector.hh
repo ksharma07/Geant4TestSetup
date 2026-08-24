@@ -13,6 +13,7 @@
 #include "G4TouchableHistory.hh"
 #include "G4Track.hh"
 #include "G4ParticleDefinition.hh"
+#include "G4OpticalPhoton.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4ios.hh"
 

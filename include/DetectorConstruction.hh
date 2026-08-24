@@ -3,6 +3,7 @@
 
 #include "G4VUserDetectorConstruction.hh"
 #include "G4MaterialPropertiesTable.hh"
+#include "G4OpticalSurface.hh"
 #include "G4VPhysicalVolume.hh"
 #include "G4Box.hh"
 #include "G4Cons.hh"

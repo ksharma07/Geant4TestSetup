@@ -1,4 +1,5 @@
 #include "PrimaryGenerator.hh"
+#include <cmath>
 
 PrimaryGenerator::PrimaryGenerator()
 {
@@ -56,17 +57,26 @@ void PrimaryGenerator::GeneratePrimaries(G4Event* anEvent)
     // Define gamma particle
     G4ParticleDefinition* gamma = G4Gamma::GammaDefinition();
 
+    // Sample one common source point uniformly over a disk of radius 2 mm.
+    const G4double sourceRadius = 2.0*mm;
+    const G4double u = G4UniformRand();
+    const G4double phi = CLHEP::twopi*G4UniformRand();
+    const G4double r = sourceRadius*std::sqrt(u);
+    const G4double x = r*std::cos(phi);
+    const G4double y = r*std::sin(phi);
+    const G4ThreeVector sourcePos(x, y, 0.0);
+
     // Set first gamma
     particleGun->SetParticleDefinition(gamma);
     particleGun->SetParticleEnergy(511*keV);
-    particleGun->SetParticlePosition(G4ThreeVector(0.,0.,0.));
+    particleGun->SetParticlePosition(sourcePos);
     particleGun->SetParticleMomentumDirection(G4ThreeVector(0.,0.,1.));
     particleGun->GeneratePrimaryVertex(anEvent);
 
     // Set second gamma opposite direction
     particleGun->SetParticleDefinition(gamma);
     particleGun->SetParticleEnergy(511*keV);
-    particleGun->SetParticlePosition(G4ThreeVector(0.,0.,0.));
+    particleGun->SetParticlePosition(sourcePos);
     particleGun->SetParticleMomentumDirection(G4ThreeVector(0.,0.,-1.));
     particleGun->GeneratePrimaryVertex(anEvent);
 

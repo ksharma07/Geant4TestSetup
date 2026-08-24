@@ -15,6 +15,12 @@ public:
 
     virtual void BeginOfEventAction(const G4Event*);
     virtual void EndOfEventAction(const G4Event*);
+
+    void AddOpticalPhotonsCreated(G4int count);
+
+private:
+    G4int fOpticalPhotonsCreated;
+
 };
 
 #endif

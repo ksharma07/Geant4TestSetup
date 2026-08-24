@@ -10,6 +10,7 @@ public:
     virtual ~ActionInitialization();
     
     virtual void Build() const override;
+    virtual void BuildForMaster() const override;
 };
 
 #endif

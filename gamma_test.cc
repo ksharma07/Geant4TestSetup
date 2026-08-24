@@ -1,7 +1,8 @@
 #include <iostream>
+#include <thread>
 
 #include "G4RunManager.hh"
-#include "G4MTRunManager.hh"
+#include "G4RunManagerFactory.hh"
 #include "G4UImanager.hh"
 #include "G4VisManager.hh"
 #include "G4VisExecutive.hh"
@@ -14,7 +15,15 @@
 int main(int argc, char** argv)
 {
     // Run Manager
-    auto* runManager = new G4RunManager();
+    auto* runManager = G4RunManagerFactory::CreateRunManager(G4RunManagerType::Default);
+#ifdef G4MULTITHREADED
+    unsigned int nThreads = std::thread::hardware_concurrency();
+    if (nThreads == 0) {
+        nThreads = 2;
+    }
+    runManager->SetNumberOfThreads(static_cast<G4int>(nThreads));
+    G4cout << "Using " << nThreads << " worker threads." << G4endl;
+#endif
     runManager->SetUserInitialization(new DetectorConstruction());
     runManager->SetUserInitialization(new PhysicsList());
     runManager->SetUserInitialization(new ActionInitialization());

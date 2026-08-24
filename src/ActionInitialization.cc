@@ -2,6 +2,7 @@
 #include "PrimaryGenerator.hh"
 #include "RunAction.hh"
 #include "EventAction.hh"
+#include "SteppingAction.hh"
 
 ActionInitialization::ActionInitialization() : G4VUserActionInitialization()
 {}
@@ -19,5 +20,13 @@ void ActionInitialization::Build() const
     EventAction* eventAction = new EventAction();
     SetUserAction(eventAction);
 
-    //SetUserAction(new SteppingAction(eventAction));
+    SetUserAction(new SteppingAction(eventAction));
+}
+
+void ActionInitialization::BuildForMaster() const
+{
+    auto* analysisManager = G4AnalysisManager::Instance();
+    analysisManager->SetNtupleMerging(true);
+
+    SetUserAction(new RunAction());
 }

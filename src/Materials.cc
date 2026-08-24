@@ -1,5 +1,8 @@
 
 #include "Materials.hh"
+#include "G4SystemOfUnits.hh"
+#include <array>
+#include <vector>
 
 Materials::Materials()
 {
@@ -128,6 +131,12 @@ Materials::Materials()
   ABS_GF = new G4Material("ABS_GF", 1.15 * CLHEP::g / CLHEP::cm3, 2);
   ABS_GF->AddMaterial(ABS, 80 * CLHEP::perCent);  // 80% ABS
   ABS_GF->AddMaterial(SiO2, 20 * CLHEP::perCent); // 20% Glass Fiber
+
+  // this part defines optical grease as a separate material so we can insert it
+  // between scintillator and SiPM and reduce refractive-index mismatch losses.
+  opticalGrease = new G4Material("OpticalGrease", 1.05 * CLHEP::g / CLHEP::cm3, 2);
+  opticalGrease->AddElement(elementC, 2);
+  opticalGrease->AddElement(elementH, 6);
 ///////////////////////////////////////////////////////////////////////////////////
   eljen230 = new G4Material("eljen230", 1.023 * CLHEP::g / CLHEP::cm3, 2);
   eljen230->AddElement(elementH, 515);
@@ -162,6 +171,8 @@ Materials::Materials()
   concrete->AddElement(elementAl, 0.014245);
   concrete->AddElement(elementSi, 0.227915);
 
+  // this part attaches all optical and scintillation property tables after every material object has been created, so all pointers are valid during setup.
+  BuildOpticalProperties();
 
 }
 
@@ -177,4 +188,127 @@ G4Material *Materials::FindMaterial(G4String materialName)
   G4Material *pttoMaterial = G4Material::GetMaterial(materialName);
 
   return pttoMaterial;
+}
+
+void Materials::BuildOpticalProperties()
+{
+  // this part defines a shared photon-energy grid in ascending order; Geant4 requires strictly increasing photon energy for optical property tables.
+  std::array<G4double, 5> photonEnergy = {
+      2.00 * eV,
+      2.40 * eV,
+      2.92 * eV,
+      3.30 * eV,
+      3.80 * eV};
+  // this part converts the shared energy grid into std::vector because Geant4 11
+  // AddProperty API uses vector-based overloads.
+  std::vector<G4double> photonEnergyV(photonEnergy.begin(), photonEnergy.end());
+
+  // this part sets air optical properties so dielectric-dielectric boundaries
+  // can compute Fresnel reflection/refraction correctly.
+  {
+    std::array<G4double, 5> rIndexAir = {1.0003, 1.0003, 1.0003, 1.0003, 1.0003};
+    std::array<G4double, 5> absAir = {1000.0 * m, 1000.0 * m, 1000.0 * m, 1000.0 * m, 1000.0 * m};
+    std::vector<G4double> rIndexAirV(rIndexAir.begin(), rIndexAir.end());
+    std::vector<G4double> absAirV(absAir.begin(), absAir.end());
+    auto* mpt = new G4MaterialPropertiesTable();
+    mpt->AddProperty("RINDEX", photonEnergyV, rIndexAirV);
+    mpt->AddProperty("ABSLENGTH", photonEnergyV, absAirV);
+    air->SetMaterialPropertiesTable(mpt);
+  }
+
+  // this part sets bar optical transport + scintillation generation parameters.
+  {
+    // EJ-228/EJ-230 emission spectrum from datasheet: peak at ~390 nm (3.18 eV).
+    // All three properties share this grid so RINDEX and ABSLENGTH are defined
+    // at every photon energy that scintillation can produce.
+    std::vector<G4double> scintEnergyV = {
+        2.480 * eV,  // 500 nm
+        2.611 * eV,  // 475 nm
+        2.756 * eV,  // 450 nm
+        2.918 * eV,  // 425 nm
+        3.100 * eV,  // 400 nm
+        3.179 * eV,  // 390 nm  <- peak
+        3.307 * eV,  // 375 nm
+        3.444 * eV,  // 360 nm
+        3.543 * eV}; // 350 nm
+    std::vector<G4double> rIndexBarV   = {1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58, 1.58};
+    // EJ-230 datasheet: mean free path = 100 cm. RAYLEIGH removed to avoid double-counting.
+    std::vector<G4double> absBarV      = {1.0*m, 1.0*m, 1.0*m, 1.0*m, 1.0*m, 1.0*m, 1.0*m, 1.0*m, 1.0*m};
+    std::vector<G4double> scintFastV   = {0.01, 0.04, 0.10, 0.33, 0.92, 1.00, 0.55, 0.05, 0.01};
+
+    auto* mpt = new G4MaterialPropertiesTable();
+    mpt->AddProperty("RINDEX",                scintEnergyV,  rIndexBarV); // same 9-point grid as ABSLENGTH and emission spectrum
+    mpt->AddProperty("ABSLENGTH",             scintEnergyV,  absBarV);   //Bulk attenuation length from EJ-230 datasheet (100 cm)
+    mpt->AddProperty("SCINTILLATIONCOMPONENT1", scintEnergyV, scintFastV);//emission spectrum shape from EJ-228/EJ-230 datasheet, peak ~390 nm
+    mpt->AddConstProperty("SCINTILLATIONYIELD", 9700.0 / MeV);//Mean number of scintillation photons per deposited energy.
+    mpt->AddConstProperty("RESOLUTIONSCALE", 1.0);//Scale for statistical fluctuations in photon yield.
+    mpt->AddConstProperty("SCINTILLATIONTIMECONSTANT1", 1.5 * ns);//light photons produced as function of time after energy deposit  
+    mpt->AddConstProperty("SCINTILLATIONYIELD1", 1.0);//100% of scintillation light is produced by component 1 (single-component model) *This needs to change for including reflection at Al boundries.
+    //if there are other slow faster componwents of exp add those components and share the yield "%" 1.0.
+    eljen230->SetMaterialPropertiesTable(mpt);
+  }
+
+  // this part gives Eljen232q transport properties
+  { 
+    std::array<G4double, 5> rIndexBar = {1.58, 1.58, 1.58, 1.58, 1.58};
+    std::array<G4double, 5> absBar = {3.0 * m, 3.0 * m, 3.0 * m, 3.0 * m, 3.0 * m};
+    std::vector<G4double> rIndexBarV(rIndexBar.begin(), rIndexBar.end());
+    std::vector<G4double> absBarV(absBar.begin(), absBar.end());
+    auto* mpt = new G4MaterialPropertiesTable();
+    mpt->AddProperty("RINDEX", photonEnergyV, rIndexBarV);
+    mpt->AddProperty("ABSLENGTH", photonEnergyV, absBarV);
+    eljen232q->SetMaterialPropertiesTable(mpt);
+  }
+
+  // this part adds optical transport properties for aluminum so boundaries that
+  // use dielectric-metal optical surfaces have consistent material definitions.
+  {
+    std::array<G4double, 5> rIndexAl = {0.9, 0.9, 0.9, 0.9, 0.9};
+    std::array<G4double, 5> absAl = {1.0 * nm, 1.0 * nm, 1.0 * nm, 1.0 * nm, 1.0 * nm};
+    std::vector<G4double> rIndexAlV(rIndexAl.begin(), rIndexAl.end());
+    std::vector<G4double> absAlV(absAl.begin(), absAl.end());
+    auto* mpt = new G4MaterialPropertiesTable();
+    mpt->AddProperty("RINDEX", photonEnergyV, rIndexAlV);
+    mpt->AddProperty("ABSLENGTH", photonEnergyV, absAlV);
+    aluminium->SetMaterialPropertiesTable(mpt);
+  }
+
+  // this part sets SiPM silicon optical properties.
+  // RINDEX is set equal to grease (1.46) so Geant4 applies no Fresnel reflection
+  // at the grease-silicon boundary. Detection probability is handled entirely by
+  // the wavelength-dependent PDE in SensitiveDetector; using the datasheet PDE
+  // curve on top of a Fresnel loss would double-count the surface reflection.
+  // ABSLENGTH is unused in practice because SensitiveDetector kills the photon
+  // immediately on entry, but must be defined for Geant4 to be happy.
+  {
+    std::array<G4double, 5> rIndexSi = {1.46, 1.46, 1.46, 1.46, 1.46};
+    std::array<G4double, 5> absSi = {0.01 * mm, 0.01 * mm, 0.01 * mm, 0.01 * mm, 0.01 * mm};
+    std::vector<G4double> rIndexSiV(rIndexSi.begin(), rIndexSi.end());
+    std::vector<G4double> absSiV(absSi.begin(), absSi.end());
+    auto* mpt = new G4MaterialPropertiesTable();
+    mpt->AddProperty("RINDEX", photonEnergyV, rIndexSiV);
+    mpt->AddProperty("ABSLENGTH", photonEnergyV, absSiV);
+    silicon->SetMaterialPropertiesTable(mpt);
+  }
+
+  {
+    // Use same 9-point grid as scintillation emission (350-500 nm).
+    std::vector<G4double> greaseEnergyV = {
+        2.480 * eV,  // 500 nm
+        2.611 * eV,  // 475 nm
+        2.756 * eV,  // 450 nm
+        2.918 * eV,  // 425 nm
+        3.100 * eV,  // 400 nm
+        3.179 * eV,  // 390 nm
+        3.307 * eV,  // 375 nm
+        3.444 * eV,  // 360 nm
+        3.543 * eV}; // 350 nm
+    std::vector<G4double> rIndexGreaseV = {1.46, 1.46, 1.46, 1.46, 1.46, 1.46, 1.46, 1.46, 1.46};
+    std::vector<G4double> absGreaseV    = {
+        9.95*mm, 9.95*mm, 9.95*mm, 6.6*mm, 6.6*mm, 5.0*mm, 3.9*mm, 3.3*mm, 2.85*mm};
+    auto* mpt = new G4MaterialPropertiesTable();
+    mpt->AddProperty("RINDEX",     greaseEnergyV, rIndexGreaseV);
+    mpt->AddProperty("ABSLENGTH",  greaseEnergyV, absGreaseV);
+    opticalGrease->SetMaterialPropertiesTable(mpt);
+  }
 }

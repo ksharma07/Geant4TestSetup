@@ -9,6 +9,7 @@
 #include "G4VPhysicalVolume.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4AnalysisManager.hh"
+#include "G4OpticalPhoton.hh"
 
 #include "EventAction.hh"
 
